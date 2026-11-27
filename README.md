@@ -14,7 +14,7 @@ A pocket to-do app: make a topic for each area of life or work, keep a numbered 
 ### To-dos
 - **Add:** type and press Enter or Add. The field stays focused for quick entry, and new to-dos go to the bottom.
 - **Reorder:** drag the **⋮⋮** handle. Other items slide out of the way, numbers update live, and the page auto-scrolls near the top or bottom edge. Works with touch and mouse. With a keyboard, focus a handle and use ↑/↓.
-- **Complete:** tap the circle. Done items move to a collapsible **Done** list (newest first). Tap again to restore (it goes back to the bottom of the list). **Clear done** removes them all.
+- **Complete:** tap the circle. Done items move to a collapsible **Done** list (newest first). Tap again to restore: it returns to the spot it had before you completed it. **Clear done** removes them all.
 - **Edit:** tap a to-do's text, then press Enter or tap away to save (Esc cancels).
 - **Delete:** **×**, with a second tap to confirm.
 

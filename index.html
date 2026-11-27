@@ -162,7 +162,7 @@ function del(id){topics=topics.filter(t=>t.id!==id);items=items.filter(t=>t.id!=
 
 function recency(){const r={};topics.forEach(t=>r[t.id]=Math.max(t.opened||0,t.created||0));items.forEach(i=>{const v=Math.max(i.created||0,i.doneAt||0,i.moved||0);if(r[i.topicId]!==undefined&&v>r[i.topicId])r[i.topicId]=v});return r}
 function byRecent(){const r=recency();return[...topics].sort((a,b)=>r[b.id]-r[a.id])}
-const openOf=id=>items.filter(i=>i.topicId===id&&!i.done).sort((a,b)=>a.order-b.order);
+const openOf=id=>items.filter(i=>i.topicId===id&&!i.done).sort((a,b)=>a.order-b.order||(a.created||0)-(b.created||0));
 const doneOf=id=>items.filter(i=>i.topicId===id&&i.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
 const nameOf=id=>topics.find(t=>t.id===id)?.name||'';
 const ago=t=>{if(!t)return'';const d=Math.floor((Date.now()-t)/864e5);return d<1?'today':d<2?'yesterday':d<7?d+' days ago':new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
@@ -293,7 +293,7 @@ document.addEventListener('click',e=>{
   else if(a==='sheet'){openSheet();return}
   else if(a==='sheetclose'){closeSheet();return}
   else if(a==='sheetdel'){const b=$('#shDel');if(b.dataset.arm){items.filter(x=>x.topicId===cur).forEach(x=>del(x.id));del(cur);cur=byRecent()[0]?.id||null;closeSheet()}else{const n=items.filter(x=>x.topicId===cur).length;b.dataset.arm=1;b.classList.add('danger');b.textContent=n?`Delete topic and its ${n} to-do${n===1?'':'s'}?`:'Delete topic?'}return}
-  else if(a==='toggle'&&it){if(it.done){const mx=items.filter(i=>i.topicId===it.topicId&&!i.done).reduce((m,i)=>Math.max(m,i.order),-1);put({...it,done:false,doneAt:null,order:mx+1})}else put({...it,done:true,doneAt:Date.now()})}
+  else if(a==='toggle'&&it){if(it.done){put({...it,done:false,doneAt:null})}else put({...it,done:true,doneAt:Date.now()})}
   else if(a==='edit'&&it){if(editing&&editing!==id)saveEdit();editing=id}
   else if(a==='del'&&it){if(armed===id){del(id);armed=null}else armed=id}
   else if(a==='toggledone'){showDone=!showDone}
