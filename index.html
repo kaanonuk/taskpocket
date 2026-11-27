@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taskpocket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm, quick, a pocket list you use many times a day
+   IDEA: a stack of index cards, one per topic, each a numbered priority list
+   PICTURE: the working list itself — topic tabs, then numbered rows with grips
+   COLOUR and TYPE: white page, deep ink, one cobalt accent; Literata titles, Inter UI
+   LAYOUT: one calm column, max 640px, sticky tabs, 44px targets */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#11131a);--ink:light-dark(#171a2b,#eceef6);--mute:light-dark(#5d6279,#9ca2ba);--line:light-dark(#e2e4ee,#2a2e3d);--card:light-dark(#f5f6fa,#1a1d28);--acc:light-dark(#2459d6,#6f9bff);--accbg:light-dark(#e7eefc,#1b2747);--warn:light-dark(#c8341f,#ff7a66)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:640px;margin:0 auto;padding:0 16px 80px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 0 0}
+h1{font:700 30px/1.05 Literata,Georgia,serif;margin:0 0 10px}
+.tabs{display:flex;gap:4px}
+.tabs button{flex:1;border:0;background:none;color:var(--mute);font:600 16px Inter,sans-serif;min-height:44px;border-bottom:3px solid transparent;cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:var(--acc)}
+.shelf{display:flex;flex-wrap:wrap;gap:8px;padding:16px 0 4px}
+.shelf button{flex:none;min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:500 15px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.shelf button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.shelf .bk{max-width:38vw;overflow:hidden;text-overflow:ellipsis}
+@media(min-width:640px){.shelf .bk{max-width:220px}}
+.shelf .more{background:none;font-weight:600}
+.shelf .add{border-style:dashed;background:none;color:var(--acc)}
+form{display:flex;gap:8px;margin:12px 0}
+input{flex:1;font:16px Inter,sans-serif;min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+input:focus-visible,button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.btn{min-height:48px;padding:0 18px;border:0;border-radius:12px;background:var(--acc);color:#fff;font:600 16px Inter,sans-serif;cursor:pointer}
+.ghost{min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:none;color:var(--ink);font:500 14px Inter,sans-serif;cursor:pointer}
+.danger{color:var(--warn)!important;border-color:var(--warn)!important}
+.chipform{display:flex;gap:6px;margin:10px 0 0}
+.chipform input{min-height:44px;border-radius:22px;padding:0 16px}
+.chipform .ok,.chipform .x{flex:none;width:44px;min-height:44px;border-radius:22px;border:0;font-size:18px;cursor:pointer}
+.chipform .ok{background:var(--acc);color:#fff}.chipform .x{background:var(--card);color:var(--mute);border:1px solid var(--line)}
+.picker{margin:10px 0 4px;border:1px solid var(--line);border-radius:14px;padding:12px}
+.picker input{width:100%}
+.plist{max-height:50vh;overflow-y:auto;margin-top:8px}
+.prow{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 6px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);text-align:left;font:500 16px Inter,sans-serif;cursor:pointer}
+.prow span{flex:1;overflow-wrap:anywhere}.prow small{color:var(--mute);font-size:13px;white-space:nowrap}
+.prow.on{color:var(--acc);font-weight:600}
+.head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:14px}
+.head h2{font:700 24px/1.15 Literata,Georgia,serif;margin:0;flex:1 1 160px;overflow-wrap:break-word}
+.titlebtn{all:unset;cursor:pointer;font:inherit;color:inherit;overflow-wrap:break-word}
+.titlebtn:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:6px}
+.chev{font-size:18px;color:var(--mute);margin-inline-start:6px;vertical-align:4px}
+.count{color:var(--mute);font-size:14px}
+.info{color:var(--mute);font-size:13px;margin:6px 0}
+.note{min-height:1.2em;margin:0 0 4px;color:var(--warn);font-size:14px}
+.empty{color:var(--mute);text-align:center;padding:36px 12px}
+ol.todo{list-style:none;margin:6px 0 0;padding:0}
+ol.todo li{display:flex;align-items:center;gap:4px;background:var(--card);border-radius:14px;margin:8px 0;padding:4px 4px 4px 0;position:relative;transition:transform .16s ease}
+ol.todo.sorting li{transition:transform .16s ease}
+ol.todo li.dragging{transition:none;z-index:3;box-shadow:0 10px 24px rgba(0,0,0,.22);background:var(--accbg)}
+.grip{flex:none;width:40px;min-height:44px;border:0;background:none;color:var(--mute);font-size:18px;letter-spacing:-3px;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none}
+.grip:active{cursor:grabbing}
+.num{flex:none;min-width:26px;font:700 16px Literata,Georgia,serif;color:var(--acc);font-variant-numeric:tabular-nums}
+.chk{flex:none;width:44px;height:44px;border:0;background:none;cursor:pointer;display:grid;place-items:center}
+.chk i{width:22px;height:22px;border-radius:50%;border:2px solid var(--mute);display:block}
+.done .chk i{background:var(--acc);border-color:var(--acc);box-shadow:inset 0 0 0 3px var(--card)}
+.txt{flex:1;padding:10px 4px;overflow-wrap:anywhere;cursor:text;-webkit-user-select:none;user-select:none}
+.done .txt{color:var(--mute);text-decoration:line-through}
+.edit{flex:1;min-height:40px;padding:0 10px;border-radius:10px}
+.del{flex:none;border:0;background:none;color:var(--mute);font-size:20px;min-width:44px;min-height:44px;cursor:pointer}
+.del.arm{color:var(--warn);font-size:13px;font-weight:600;min-width:64px}
+.tpc{font-size:12px;color:var(--mute);padding:0 6px;white-space:nowrap}
+.grp{display:flex;align-items:baseline;gap:8px;margin:22px 0 2px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.grp button{all:unset;cursor:pointer;font:700 18px Literata,Georgia,serif}
+.grp span{color:var(--mute);font-size:13px}
+.imp{margin-top:28px;border-top:1px solid var(--line);padding-top:8px}
+.imp summary{min-height:44px;display:flex;align-items:center;font-weight:600;cursor:pointer;color:var(--acc)}
+.filebtn{display:inline-flex;align-items:center}
+.bookacts{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.sheetbg{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;border-radius:0 0 20px 20px;padding:20px 16px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.sheet h2{font:700 24px/1.15 Literata,Georgia,serif;margin:0 0 4px;overflow-wrap:break-word}
+.sheet .bookacts{margin-top:18px}
+.lab{display:block;font-weight:600;font-size:14px;margin:14px 0 6px}
+.tools{display:flex;gap:8px;align-items:center;margin-top:16px}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){ol.todo li{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding-bottom:0">
+  <h1>Taskpocket</h1>
+  <div class="tabs" role="tablist">
+    <button role="tab" data-view="topics" aria-selected="true">By topic</button>
+    <button role="tab" data-view="all" aria-selected="false">All to-dos</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <section id="topics">
+    <div class="shelf" id="shelf"><span id="chips" style="display:contents"></span><button class="add" data-act="newtopic" id="addTopic">+ Topic</button></div>
+    <form id="topicForm" class="chipform" hidden><input id="topicName" placeholder="Topic name" autocomplete="off" maxlength="80" enterkeyhint="done"><button class="ok" aria-label="Save topic">✓</button><button type="button" class="x" data-act="canceltopic" aria-label="Cancel">×</button></form>
+    <div class="picker" id="picker" hidden>
+      <input id="topicSearch" type="search" placeholder="Search your topics" autocomplete="off">
+      <div class="plist" id="plist"></div>
+    </div>
+    <div class="head" id="topicHead"></div>
+    <form id="itemForm"><input id="itemIn" placeholder="New to-do" autocomplete="off" maxlength="200" enterkeyhint="done"><button class="btn">Add</button></form>
+    <p class="note" id="note" aria-live="polite"></p>
+    <div id="openList"></div>
+    <div id="doneList"></div>
+    <details class="imp" id="bak">
+      <summary>Backup &amp; restore</summary>
+      <p class="info">Your to-dos are saved in your Claude account. This phone also keeps its own copy automatically, and you can download a backup file (CSV, opens in Numbers or Excel) to your Files app.</p>
+      <p class="info" id="phoneCopy"></p>
+      <div class="bookacts"><button class="btn" data-act="bakdl">Download backup file</button><label class="ghost filebtn">Restore from file<input type="file" id="bakFile" accept=".csv,text/csv" hidden></label></div>
+      <div id="bakOut" class="info" aria-live="polite"></div>
+    </details>
+    <div id="restoreBanner"></div>
+  </section>
+  <section id="all" hidden>
+    <div class="tools"><input id="search" type="search" placeholder="Search to-dos" autocomplete="off"></div>
+    <p class="info" id="allCount"></p>
+    <div id="allList"></div>
+  </section>
+  <p class="info" id="sync"></p>
+  <div class="sheetbg" id="sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+      <h2 id="shTitle"></h2>
+      <p class="info" id="shMeta"></p>
+      <label class="lab" for="shName">Rename</label>
+      <form id="shRename" class="chipform"><input id="shName" autocomplete="off" maxlength="80" enterkeyhint="done"><button class="ok" aria-label="Save name">✓</button></form>
+      <div class="bookacts"><button class="ghost" id="shDel" data-act="sheetdel">Delete topic</button><button class="ghost" data-act="sheetclose" style="margin-inline-start:auto">Close</button></div>
+    </div>
+  </div>
+</main>
+
+<script>
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+let topics=[],items=[],view='topics',cur=null,store=null,synced=false,loaded=false,autoOpen=false,editing=null,armed=null,showDone=false,q='',drag=null;
+
+function localStore(){
+  let d={};try{d=JSON.parse(localStorage.getItem('taskpocket')||'{}')}catch(e){}
+  const save=()=>{try{localStorage.setItem('taskpocket',JSON.stringify(d))}catch(e){}};
+  let tm;const emit=()=>{clearTimeout(tm);tm=setTimeout(()=>ingest(Object.values(d)))};emit();
+  return{put(x){d[x.id]=x;save();emit()},del(id){delete d[id];save();emit()}};
+}
+function ingest(docs){
+  loaded=true;
+  topics=docs.filter(x=>x&&x.kind==='topic').sort((a,b)=>a.created-b.created);
+  items=docs.filter(x=>x&&x.kind==='item');
+  if(!topics.some(t=>t.id===cur))cur=byRecent()[0]?.id||null;
+  if(synced&&(topics.length||items.length))savePhoneCopy();
+  if(!drag)render();
+}
+function useLocal(msg){if(store)return;store=localStore();$('#sync').textContent=msg}
+function put(x){const arr=x.kind==='topic'?topics:items;const i=arr.findIndex(y=>y.id===x.id);if(i>=0)arr[i]=x;else arr.push(x);store.put(x)}
+function del(id){topics=topics.filter(t=>t.id!==id);items=items.filter(t=>t.id!==id);store.del(id)}
+
+function recency(){const r={};topics.forEach(t=>r[t.id]=Math.max(t.opened||0,t.created||0));items.forEach(i=>{const v=Math.max(i.created||0,i.doneAt||0,i.moved||0);if(r[i.topicId]!==undefined&&v>r[i.topicId])r[i.topicId]=v});return r}
+function byRecent(){const r=recency();return[...topics].sort((a,b)=>r[b.id]-r[a.id])}
+const openOf=id=>items.filter(i=>i.topicId===id&&!i.done).sort((a,b)=>a.order-b.order);
+const doneOf=id=>items.filter(i=>i.topicId===id&&i.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+const nameOf=id=>topics.find(t=>t.id===id)?.name||'';
+const ago=t=>{if(!t)return'';const d=Math.floor((Date.now()-t)/864e5);return d<1?'today':d<2?'yesterday':d<7?d+' days ago':new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
+
+function row(it,i,withGrip,showTopic){
+  const ed=editing===it.id;
+  return `<li data-id="${esc(it.id)}" class="${it.done?'done':''}">
+  ${withGrip?`<button class="grip" data-grip aria-label="Reorder: ${esc(it.text)}. Use arrow keys to move.">⋮⋮</button>`:'<span style="width:12px;flex:none"></span>'}
+  ${it.done?'':`<span class="num">${i+1}.</span>`}
+  <button class="chk" data-act="toggle" aria-label="${it.done?'Mark not done':'Mark done'}"><i></i></button>
+  ${ed?`<input class="edit" id="editIn" value="${esc(it.text)}" maxlength="200" enterkeyhint="done">`:`<span class="txt" data-act="edit">${esc(it.text)}</span>`}
+  ${showTopic?`<span class="tpc">${esc(nameOf(it.topicId))}</span>`:''}
+  <button class="del${armed===it.id?' arm':''}" data-act="del" aria-label="Delete to-do">${armed===it.id?'Delete?':'×'}</button></li>`;
+}
+
+function render(){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.view===view));
+  $('#topics').hidden=view!=='topics';$('#all').hidden=view!=='all';
+  if(!store){$('#openList').innerHTML='<p class="empty">Opening your lists…</p>';return}
+  const ae=document.activeElement,editVal=ae&&ae.id==='editIn'?ae.value:null;
+  const sorted=byRecent(),r=recency();
+  const top=[...new Set([cur,...sorted.map(t=>t.id)].filter(Boolean))].slice(0,2).map(id=>topics.find(t=>t.id===id)).filter(Boolean).sort((a,b)=>r[b.id]-r[a.id]);
+  $('#chips').innerHTML=top.map(t=>`<button class="bk${t.id===cur?' on':''}" data-act="pick" data-t="${esc(t.id)}">${esc(t.name)}</button>`).join('')
+    +(topics.length>2?`<button class="more" data-act="alltopics" aria-expanded="${!$('#picker').hidden}">All topics · ${topics.length} ${$('#picker').hidden?'▾':'▴'}</button>`:'');
+  if(topics.length<=2)$('#picker').hidden=true;
+  if(!$('#picker').hidden){
+    const sq=$('#topicSearch').value.trim().toLowerCase();
+    const rows=sorted.filter(t=>!sq||t.name.toLowerCase().includes(sq));
+    $('#plist').innerHTML=rows.length?rows.map(t=>{const n=openOf(t.id).length;return`<button class="prow${t.id===cur?' on':''}" data-act="pick" data-t="${esc(t.id)}"><span>${esc(t.name)}</span><small>${n} open · ${esc(ago(r[t.id]))}</small></button>`}).join(''):'<p class="info">No topics match.</p>';
+  }
+  if(loaded&&!topics.length&&!autoOpen){autoOpen=true;$('#topicForm').hidden=false}
+  if(topics.length&&autoOpen){autoOpen=false;if(!$('#topicName').value)$('#topicForm').hidden=true}
+  const T=topics.find(t=>t.id===cur);
+  $('#itemForm').hidden=!T;
+  const op=T?openOf(T.id):[],dn=T?doneOf(T.id):[];
+  $('#topicHead').innerHTML=T?`<h2><button class="titlebtn" data-act="sheet" aria-haspopup="dialog">${esc(T.name)}<span class="chev" aria-hidden="true">⌄</span></button></h2><span class="count">${op.length} open${dn.length?` · ${dn.length} done`:''}</span>`:'';
+  $('#openList').innerHTML=!T?'<p class="empty">Add a topic to start a list.</p>':op.length?`<ol class="todo" id="ol">${op.map((it,i)=>row(it,i,true,false)).join('')}</ol>`:`<p class="empty">${dn.length?'All done. Nice.':'Nothing here yet. Add your first to-do.'}</p>`;
+  $('#doneList').innerHTML=dn.length?`<div class="bookacts" style="margin-top:18px"><button class="ghost" data-act="toggledone" aria-expanded="${showDone}">Done · ${dn.length} ${showDone?'▴':'▾'}</button>${showDone?`<button class="ghost${armed==='clear'?' danger':''}" data-act="cleardone">${armed==='clear'?`Delete ${dn.length} done?`:'Clear done'}</button>`:''}</div>${showDone?`<ol class="todo">${dn.map((it,i)=>row(it,i,false,false)).join('')}</ol>`:''}`:'';
+  const ql=q.trim().toLowerCase();let total=0;
+  $('#allList').innerHTML=sorted.map(t=>{const o=openOf(t.id).filter(i=>!ql||i.text.toLowerCase().includes(ql));total+=o.length;if(!o.length)return'';
+    return `<div class="grp"><button data-act="gotopic" data-t="${esc(t.id)}">${esc(t.name)}</button><span>${o.length} open</span></div><ol class="todo">${o.map((it,i)=>row(it,i,false,false)).join('')}</ol>`}).join('')||`<p class="empty">${items.length?'No open to-dos match.':'To-dos from every topic show up here.'}</p>`;
+  $('#allCount').textContent=`${total} open to-do${total===1?'':'s'} across ${topics.length} topic${topics.length===1?'':'s'}`;
+  renderBackup();
+  const ei=$('#editIn');if(ei){if(editVal!=null)ei.value=editVal;ei.focus();const n=ei.value.length;try{ei.setSelectionRange(n,n)}catch(e){}}
+}
+
+function saveEdit(){const ei=$('#editIn');if(!ei||!editing)return;const it=items.find(i=>i.id===editing);const v=ei.value.trim().replace(/\s+/g,' ');editing=null;if(it&&v&&v!==it.text)put({...it,text:v});render()}
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='editIn'){if(e.key==='Enter'){e.preventDefault();saveEdit()}else if(e.key==='Escape'){editing=null;render()}}
+  else if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet();
+  else if(e.target.matches&&e.target.matches('[data-grip]')&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
+    e.preventDefault();const id=e.target.closest('li').dataset.id,op=openOf(cur),from=op.findIndex(i=>i.id===id),to=from+(e.key==='ArrowUp'?-1:1);
+    if(to<0||to>=op.length)return;moveTo(op,from,to);render();document.querySelector(`li[data-id="${CSS.escape(id)}"] [data-grip]`)?.focus();
+  }
+});
+document.addEventListener('focusout',e=>{if(e.target.id==='editIn')setTimeout(()=>{if(editing&&document.activeElement?.id!=='editIn')saveEdit()},0)});
+
+function moveTo(op,from,to){
+  const arr=[...op];const [it]=arr.splice(from,1);arr.splice(to,0,it);
+  const p=arr[to-1],n=arr[to+1];let o=p&&n?(p.order+n.order)/2:p?p.order+1:n?n.order-1:0;
+  if(p&&n&&Math.abs(n.order-p.order)<1e-6){arr.forEach((x,i)=>{if(x.order!==i)put({...x,order:i,...(x.id===it.id?{moved:Date.now()}:{})})});return}
+  put({...it,order:o,moved:Date.now()});
+}
+
+document.addEventListener('pointerdown',e=>{
+  const g=e.target.closest('[data-grip]');if(!g||e.button>0)return;
+  e.preventDefault();const li=g.closest('li'),ol=li.parentElement,lis=[...ol.children],from=lis.indexOf(li);
+  try{g.setPointerCapture(e.pointerId)}catch(err){}
+  const rects=lis.map(x=>x.getBoundingClientRect());const gap=lis.length>1?(from<lis.length-1?rects[from+1].top-rects[from].bottom:rects[from].top-rects[from-1].bottom):8;
+  drag={g,li,lis,rects,from,to:from,y0:e.clientY,s0:scrollY,y:e.clientY,h:rects[from].height+gap,id:e.pointerId};
+  li.classList.add('dragging');ol.classList.add('sorting');requestAnimationFrame(tick);
+});
+function place(){
+  if(!drag)return;const d=drag,dy=d.y-d.y0+(scrollY-d.s0);d.li.style.transform=`translateY(${dy}px)`;
+  const c=d.rects[d.from].top+d.rects[d.from].height/2+dy-(scrollY-d.s0);
+  let to=0;d.lis.forEach((x,i)=>{if(i!==d.from&&d.rects[i].top+d.rects[i].height/2-(scrollY-d.s0)<c)to++});d.to=to;
+  d.lis.forEach((x,i)=>{if(i===d.from)return;let s=0;if(d.from<to&&i>d.from&&i<=to)s=-d.h;if(d.from>to&&i>=to&&i<d.from)s=d.h;x.style.transform=s?`translateY(${s}px)`:'';});
+  const order=d.lis.map((x,i)=>i).filter(i=>i!==d.from);order.splice(to,0,d.from);
+  order.forEach((idx,pos)=>{const n=d.lis[idx].querySelector('.num');if(n)n.textContent=(pos+1)+'.'});
+}
+function tick(){if(!drag)return;if(drag.y<90)scrollBy(0,-10);else if(drag.y>innerHeight-90)scrollBy(0,10);place();requestAnimationFrame(tick)}
+document.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;e.preventDefault();drag.y=e.clientY;place()},{passive:false});
+function endDrag(e){
+  if(!drag||(e&&e.pointerId!==drag.id))return;const d=drag;drag=null;
+  if(d.to!==d.from){moveTo(openOf(cur),d.from,d.to);$('#note').textContent=''}
+  render();
+}
+document.addEventListener('pointerup',endDrag);document.addEventListener('pointercancel',endDrag);
+
+$('#itemForm').addEventListener('submit',e=>{
+  e.preventDefault();const v=$('#itemIn').value.trim().replace(/\s+/g,' ');if(!v||!cur||!store)return;
+  const mx=items.filter(i=>i.topicId===cur).reduce((m,i)=>Math.max(m,i.order),-1);
+  put({id:'i'+uid(),kind:'item',topicId:cur,text:v,done:false,order:mx+1,created:Date.now()});
+  $('#itemIn').value='';$('#itemIn').focus();$('#note').textContent='';render();
+});
+function saveTopic(name){
+  name=String(name||'').trim().slice(0,80);if(!name||!store)return;
+  const ex=topics.find(t=>t.name.toLowerCase()===name.toLowerCase());
+  if(ex){cur=ex.id}else{const id='t'+uid();cur=id;put({id,kind:'topic',name,created:Date.now()})}
+  $('#topicName').value='';$('#topicForm').hidden=true;render();$('#itemIn').focus();
+}
+$('#topicForm').addEventListener('submit',e=>{e.preventDefault();saveTopic($('#topicName').value)});
+$('#topicSearch').addEventListener('input',()=>render());
+$('#search').addEventListener('input',e=>{q=e.target.value;render()});
+
+function openSheet(){
+  const T=topics.find(t=>t.id===cur);if(!T)return;
+  $('#shTitle').textContent=T.name;$('#shMeta').textContent=`${openOf(T.id).length} open · ${doneOf(T.id).length} done`;
+  $('#shName').value=T.name;const b=$('#shDel');delete b.dataset.arm;b.classList.remove('danger');b.textContent='Delete topic';
+  $('#sheet').hidden=false;
+}
+function closeSheet(){$('#sheet').hidden=true;render()}
+let downOnBg=false;
+$('#sheet').addEventListener('pointerdown',e=>{downOnBg=e.target.id==='sheet'});
+$('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet'&&downOnBg)closeSheet();downOnBg=false});
+$('#shRename').addEventListener('submit',e=>{e.preventDefault();const v=$('#shName').value.trim().slice(0,80);const T=topics.find(t=>t.id===cur);if(v&&T&&v!==T.name)put({...T,name:v});closeSheet()});
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-view],[data-act]');if(!t)return;
+  if(t.dataset.view){view=t.dataset.view;armed=null;editing=null;render();return}
+  const a=t.dataset.act,id=t.closest('li')?.dataset.id,it=items.find(x=>x.id===id);
+  if(a!=='del'&&a!=='cleardone')armed=null;
+  if(a==='pick'||a==='gotopic'){cur=t.dataset.t;view='topics';$('#picker').hidden=true;$('#topicSearch').value='';$('#topicForm').hidden=true;editing=null;
+    const r=recency(),T=topics.find(x=>x.id===cur);if(T&&topics.some(x=>x.id!==cur&&r[x.id]>r[cur]))put({...T,opened:Date.now()});scrollTo(0,0)}
+  else if(a==='alltopics'){const pk=$('#picker');pk.hidden=!pk.hidden;$('#topicForm').hidden=true;if(!pk.hidden)setTimeout(()=>$('#topicSearch').focus())}
+  else if(a==='newtopic'){$('#picker').hidden=true;const f=$('#topicForm');if(!f.hidden&&topics.length){f.hidden=true}else{$('#topicName').value='';f.hidden=false;$('#topicName').focus()}}
+  else if(a==='canceltopic'){$('#topicForm').hidden=true;$('#topicName').value=''}
+  else if(a==='sheet'){openSheet();return}
+  else if(a==='sheetclose'){closeSheet();return}
+  else if(a==='sheetdel'){const b=$('#shDel');if(b.dataset.arm){items.filter(x=>x.topicId===cur).forEach(x=>del(x.id));del(cur);cur=byRecent()[0]?.id||null;closeSheet()}else{const n=items.filter(x=>x.topicId===cur).length;b.dataset.arm=1;b.classList.add('danger');b.textContent=n?`Delete topic and its ${n} to-do${n===1?'':'s'}?`:'Delete topic?'}return}
+  else if(a==='toggle'&&it){if(it.done){const mx=items.filter(i=>i.topicId===it.topicId&&!i.done).reduce((m,i)=>Math.max(m,i.order),-1);put({...it,done:false,doneAt:null,order:mx+1})}else put({...it,done:true,doneAt:Date.now()})}
+  else if(a==='edit'&&it){if(editing&&editing!==id)saveEdit();editing=id}
+  else if(a==='del'&&it){if(armed===id){del(id);armed=null}else armed=id}
+  else if(a==='toggledone'){showDone=!showDone}
+  else if(a==='cleardone'){if(armed==='clear'){doneOf(cur).forEach(x=>del(x.id));armed=null;showDone=false}else armed='clear'}
+  else if(a==='bakdl'){downloadBackup();return}
+  else if(a==='restorephone'){const pc=readPhoneCopy();if(pc){$('#restoreBanner').innerHTML='<p class="info" id="rpOut">Restoring…</p>';restoreDocs(pc.docs,$('#rpOut'))}return}
+  render();
+});
+
+const PKEY='taskpocket-phone-copy';let pcT=null;
+function savePhoneCopy(){clearTimeout(pcT);pcT=setTimeout(()=>{try{localStorage.setItem(PKEY,JSON.stringify({at:Date.now(),docs:[...topics,...items]}))}catch(e){}renderBackup()},1500)}
+function readPhoneCopy(){try{const x=JSON.parse(localStorage.getItem(PKEY)||'null');return x&&Array.isArray(x.docs)?x:null}catch(e){return null}}
+function renderBackup(){
+  const pc=readPhoneCopy();
+  $('#phoneCopy').textContent=!synced?'The phone copy is only kept while you’re signed in to Claude.':pc?`Phone copy updated ${new Date(pc.at).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · ${pc.docs.filter(d=>d.kind==='item').length} to-dos.`:'Phone copy will be saved after your lists load.';
+  const rb=$('#restoreBanner');
+  if(synced&&loaded&&!topics.length&&!items.length&&pc&&pc.docs.length){const n=pc.docs.filter(d=>d.kind==='item').length;rb.innerHTML=`<div class="sheet" style="border-radius:14px;box-shadow:none;background:var(--card);margin-top:16px"><p style="margin:0 0 8px">Your account has no lists, but this phone has a copy with <b>${n}</b> to-do${n===1?'':'s'}.</p><button class="btn" data-act="restorephone">Restore from this phone</button></div>`}
+  else rb.innerHTML='';
+}
+const csvCols=['topic','todo','done','position','created','completed'];
+const csvCell=v=>{v=String(v??'');return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+const iso=t=>t?new Date(t).toISOString():'';
+function toCSV(){
+  const rows=byRecent().flatMap(t=>{const o=openOf(t.id),d=doneOf(t.id);if(!o.length&&!d.length)return[[t.name,'','','',iso(t.created),'']];
+    return[...o.map((i,n)=>[t.name,i.text,'no',n+1,iso(i.created),'']),...d.map(i=>[t.name,i.text,'yes','',iso(i.created),iso(i.doneAt)])]});
+  return '﻿'+[csvCols,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');
+}
+function parseCSV(t){
+  t=t.replace(/^﻿/,'');const rows=[];let r=[],f='',qt=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(qt){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else qt=false}else f+=c}
+    else if(c==='"')qt=true;else if(c===','){r.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;r.push(f);rows.push(r);r=[];f=''}else f+=c}
+  if(f||r.length){r.push(f);rows.push(r)}
+  return rows.filter(x=>x.some(v=>v!==''));
+}
+function csvToDocs(t){
+  const rows=parseCSV(t);if(!rows.length)throw 0;const h=rows[0].map(x=>x.trim().toLowerCase()),ix=c=>h.indexOf(c);
+  if(ix('topic')<0||ix('todo')<0)throw 0;const docs=[],by={};
+  rows.slice(1).forEach((r,n)=>{const g=c=>ix(c)>=0?String(r[ix(c)]||'').trim():'';const name=g('topic').slice(0,80);if(!name)return;
+    let tp=by[name.toLowerCase()];if(!tp){tp=by[name.toLowerCase()]={id:'x'+uid(),kind:'topic',name,created:Date.now()};docs.push(tp)}
+    const text=g('todo').slice(0,200);if(!text)return;const done=/^(yes|true|1)$/i.test(g('done'));
+    docs.push({id:'y'+uid(),kind:'item',topicId:tp.id,text,done,order:+g('position')||1000+n,created:Date.parse(g('created'))||Date.now(),...(done?{doneAt:Date.parse(g('completed'))||Date.now()}:{})});
+  });return docs;
+}
+async function restoreDocs(docs,out){
+  let nt=0,ni=0;const k=s=>String(s||'').trim().toLowerCase();
+  for(const t of docs.filter(d=>d.kind==='topic')){
+    let T=topics.find(x=>k(x.name)===k(t.name));if(!T){T={...t,id:'t'+uid()};put(T);nt++}
+    const base=items.filter(i=>i.topicId===T.id).reduce((m,i)=>Math.max(m,i.order),-1)+1;
+    for(const it of docs.filter(d=>d.kind==='item'&&d.topicId===t.id).sort((a,b)=>a.order-b.order)){
+      if(items.some(x=>x.topicId===T.id&&k(x.text)===k(it.text)))continue;
+      put({...it,id:'i'+uid(),topicId:T.id,order:base+ni});ni++;
+    }
+  }
+  if(!cur)cur=byRecent()[0]?.id||null;
+  out.textContent=`Restored ${ni} to-do${ni===1?'':'s'}${nt?` and ${nt} topic${nt===1?'':'s'}`:''}. Anything already here was skipped.`;render();
+}
+$('#bakFile').addEventListener('change',async e=>{
+  const f=e.target.files[0],out=$('#bakOut');if(!f||!store)return;
+  try{const docs=csvToDocs(await f.text());await restoreDocs(docs,out)}catch(err){out.textContent='That file doesn’t look like a Taskpocket backup.'}
+  e.target.value='';
+});
+async function downloadBackup(){
+  const out=$('#bakOut');if(!topics.length){out.textContent='Nothing to back up yet.';return}
+  const name=`taskpocket-backup-${new Date().toISOString().slice(0,10)}.csv`;
+  try{const dl=window.claude?await window.claude.use('downloads'):null;if(!dl)throw{code:'unavailable'};
+    await dl.save({filename:name,data:new Blob([toCSV()],{type:'text/csv'})});out.textContent=`Saved ${name}. On iPhone it’s in the Files app, under Downloads.`}
+  catch(err){out.textContent=err&&err.code==='unavailable'?'Downloads aren’t available here. Open Taskpocket in Safari and try again.':'The backup wasn’t saved. Try again.'}
+}
+
+render();
+(async()=>{
+  const C=window.claude;if(!C){useLocal('Saved on this device only.');return}
+  const tmr=setTimeout(()=>useLocal('Saved on this device only.'),10000);
+  try{
+    const db=await C.use('db');const user=db&&await C.use('user');const me=user&&await user.id();clearTimeout(tmr);
+    if(!db||!me){useLocal('Sign in to claude.ai to sync across devices. Saving on this device for now.');return}
+    if(store)return;
+    const col=db.collection('data/users/'+me);
+    store={put:x=>col.doc(x.id).set(x),del:id=>col.doc(id).delete()};
+    synced=true;$('#sync').textContent='Synced to your Claude account.';
+    col.onSnapshot(s=>{const arr=Array.isArray(s)?s:(s&&s.docs)||[];ingest(arr.map(d=>typeof d.data==='function'?{...d.data(),id:d.id}:d))});
+    render();
+  }catch(e){clearTimeout(tmr);useLocal('Saved on this device only.')}
+})();
+}
+</script>
+</body>
+</html>
